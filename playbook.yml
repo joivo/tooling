@@ -1,0 +1,90 @@
+---
+- name: Install DevOps tools
+  hosts: all
+  become: yes
+
+  vars:
+    devops_tools:
+      - git
+      - curl
+      - wget
+      - python3-pip
+      - docker-ce
+      - docker-compose
+      - kubectl
+      - kubectx
+      - krew
+      - kubebuilder
+      - openjdk-11-jdk-headless
+      - golang-go
+      - rustc
+      - cargo
+      - dart-sdk
+
+  tasks:
+    - name: Install system packages
+      package:
+        name: "{{ item }}"
+        state: present
+      with_items: "{{ devops_tools }}"
+      when: ansible_os_family == "Debian" or ansible_os_family == "RedHat"
+
+    - name: Install pip packages
+      pip:
+        name: boto3
+        state: present
+      when: ansible_os_family == "Debian" or ansible_os_family == "RedHat" and ansible_distribution_version | version_compare('16.04', '>=')
+
+    - name: Install pip packages for macOS
+      pip:
+        name: boto3
+        state: present
+      when: ansible_os_family == "Darwin"
+
+    - name: Install Docker Compose for macOS
+      homebrew:
+        name: docker-compose
+        state: latest
+      when: ansible_os_family == "Darwin"
+
+    - name: Install Docker for macOS
+      homebrew:
+        name: docker
+        state: latest
+      when: ansible_os_family == "Darwin"
+
+    - name: Install kubectx
+      become: yes
+      shell: curl -LO https://github.com/ahmetb/kubectx/releases/download/v0.9.4/kubectx_v0.9.4_linux_x86_64.tar.gz && tar -zxvf kubectx_v0.9.4_linux_x86_64.tar.gz && sudo mv kubectx /usr/local/bin && rm -f kubectx_v0.9.4_linux_x86_64.tar.gz
+      when: ansible_os_family == "Linux"
+
+    - name: Install kubectx for macOS
+      homebrew:
+        name: kubectx
+        state: latest
+      when: ansible_os_family == "Darwin"
+
+    - name: Install krew
+      become: yes
+      shell: |
+        set -x; cd "$(mktemp -d)" &&
+        curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/krew.tar.gz" &&
+        tar zxvf krew.tar.gz &&
+        KREW=./krew-"$(uname | tr '[:upper:]' '[:lower:]')_amd64" &&
+        "$KREW" install krew
+      args:
+        executable: /bin/bash
+      when: ansible_os_family == "Linux"
+
+    - name: Install krew for macOS
+      homebrew:
+        name: krew
+        state: latest
+      when: ansible_os_family == "Darwin"
+
+    - name: Install kubebuilder
+      become: yes
+      shell: |
+        set -x; cd /tmp &&
+        curl -L -O https://github.com/kubernetes-sigs/kubebuilder/releases/download/v3.1.0/kubebuilder_3.1.0_linux_amd64.tar.gz &&
+        tar -zxvf kubebuilder_3.1.0_linux_amd64.tar.gz
